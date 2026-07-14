@@ -1,0 +1,118 @@
+C:\Workspace\Python\ArcaneAudio\.venv\Scripts\python.exe: No module named PyInstaller
+C:\Workspace\Python\ArcaneAudio\.venv\Scripts\python.exe: No module named PyInstaller
+131 INFO: PyInstaller: 6.19.0, contrib hooks: 2026.1
+131 INFO: Python: 3.12.6
+147 INFO: Platform: Windows-10-10.0.19045-SP0
+147 INFO: Python environment: C:\Workspace\Python\ArcaneAudio\.venv
+147 INFO: Removing temporary files and cleaning cache in C:\Users\ds\AppData\Local\pyinstaller
+ERROR: script 'C:\Workspace\Python\ArcaneAudio\main.py' not found
+113 INFO: PyInstaller: 6.19.0, contrib hooks: 2026.1
+113 INFO: Python: 3.12.6
+129 INFO: Platform: Windows-10-10.0.19045-SP0
+129 INFO: Python environment: C:\Workspace\Python\ArcaneAudio\.venv
+145 INFO: Removing temporary files and cleaning cache in C:\Users\ds\AppData\Local\pyinstaller
+367 INFO: Module search paths (PYTHONPATH):
+['C:\\Workspace\\Python\\ArcaneAudio',
+ 'C:\\Users\\ds\\AppData\\Local\\Programs\\Python\\Python312\\python312.zip',
+ 'C:\\Users\\ds\\AppData\\Local\\Programs\\Python\\Python312\\DLLs',
+ 'C:\\Users\\ds\\AppData\\Local\\Programs\\Python\\Python312\\Lib',
+ 'C:\\Users\\ds\\AppData\\Local\\Programs\\Python\\Python312',
+ 'C:\\Workspace\\Python\\ArcaneAudio\\.venv',
+ 'C:\\Workspace\\Python\\ArcaneAudio\\.venv\\Lib\\site-packages',
+ 'C:\\Workspace\\Python\\ArcaneAudio']
+1469 INFO: checking Analysis
+1469 INFO: Building Analysis because Analysis-00.toc is non existent
+1469 INFO: Looking for Python shared library...
+1469 INFO: Using Python shared library: C:\Users\ds\AppData\Local\Programs\Python\Python312\python312.dll
+1469 INFO: Running Analysis Analysis-00.toc
+1469 INFO: Target bytecode optimization level: 0
+1469 INFO: Initializing module dependency graph...
+1484 INFO: Initializing module graph hook caches...
+1520 INFO: Analyzing modules for base_library.zip ...
+2846 INFO: Processing standard module hook 'hook-encodings.py' from 'C:\\Workspace\\Python\\ArcaneAudio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+4961 INFO: Processing standard module hook 'hook-pickle.py' from 'C:\\Workspace\\Python\\ArcaneAudio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+6610 INFO: Processing standard module hook 'hook-heapq.py' from 'C:\\Workspace\\Python\\ArcaneAudio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+8193 INFO: Caching module dependency graph...
+8227 INFO: Analyzing C:\Workspace\Python\ArcaneAudio\arcaneaudio\__main__.py
+8227 INFO: Analyzing hidden import 'arcaneaudio'
+8227 INFO: Analyzing hidden import 'arcaneaudio.__main__'
+8443 INFO: Processing standard module hook 'hook-platform.py' from 'C:\\Workspace\\Python\\ArcaneAudio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+8471 INFO: Processing standard module hook 'hook-numpy.py' from 'C:\\Workspace\\Python\\ArcaneAudio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+9305 INFO: Processing standard module hook 'hook-difflib.py' from 'C:\\Workspace\\Python\\ArcaneAudio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+9690 INFO: Processing standard module hook 'hook-multiprocessing.util.py' from 'C:\\Workspace\\Python\\ArcaneAudio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+9937 INFO: Processing standard module hook 'hook-xml.py' from 'C:\\Workspace\\Python\\ArcaneAudio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+10322 INFO: Processing standard module hook 'hook-_ctypes.py' from 'C:\\Workspace\\Python\\ArcaneAudio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+11626 INFO: Processing standard module hook 'hook-sysconfig.py' from 'C:\\Workspace\\Python\\ArcaneAudio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+13511 INFO: Processing pre-safe-import-module hook 'hook-typing_extensions.py' from 'C:\\Workspace\\Python\\ArcaneAudio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+13511 INFO: SetuptoolsInfo: initializing cached setuptools info...
+15252 INFO: Processing standard module hook 'hook-pyqtgraph.py' from 'C:\\Workspace\\Python\\ArcaneAudio\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+2002 WARNING: Failed to collect submodules for 'pyqtgraph.opengl' because importing 'pyqtgraph.opengl' raised: ModuleNotFoundError: No module named 'OpenGL'
+18468 INFO: hook-pyqtgraph: selected 'PySide6' as the only available Qt bindings.
+18591 INFO: Processing standard module hook 'hook-xml.etree.cElementTree.py' from 'C:\\Workspace\\Python\\ArcaneAudio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+18606 INFO: Processing standard module hook 'hook-PySide6.py' from 'C:\\Workspace\\Python\\ArcaneAudio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+18606 INFO: Processing standard module hook 'hook-shiboken6.py' from 'C:\\Workspace\\Python\\ArcaneAudio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+18769 INFO: Processing standard module hook 'hook-PySide6.QtNetwork.py' from 'C:\\Workspace\\Python\\ArcaneAudio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+21729 INFO: Processing standard module hook 'hook-PySide6.QtCore.py' from 'C:\\Workspace\\Python\\ArcaneAudio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+24756 INFO: Processing standard module hook 'hook-PySide6.QtGui.py' from 'C:\\Workspace\\Python\\ArcaneAudio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+39360 INFO: Processing standard module hook 'hook-PySide6.QtWidgets.py' from 'C:\\Workspace\\Python\\ArcaneAudio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+42469 INFO: Processing standard module hook 'hook-PySide6.QtSvg.py' from 'C:\\Workspace\\Python\\ArcaneAudio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+42939 INFO: Processing standard module hook 'hook-PySide6.QtOpenGLWidgets.py' from 'C:\\Workspace\\Python\\ArcaneAudio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+43446 INFO: Processing standard module hook 'hook-PySide6.QtTest.py' from 'C:\\Workspace\\Python\\ArcaneAudio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+44687 INFO: Processing standard module hook 'hook-xml.dom.domreg.py' from 'C:\\Workspace\\Python\\ArcaneAudio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+45813 INFO: Processing standard module hook 'hook-yt_dlp.py' from 'C:\\Workspace\\Python\\ArcaneAudio\\.venv\\Lib\\site-packages\\yt_dlp\\__pyinstaller'
+45967 WARNING: collect_data_files - skipping data collection for module 'curl_cffi' as it is not a package.
+45967 WARNING: collect_data_files - skipping data collection for module 'yt_dlp_ejs' as it is not a package.
+47352 INFO: Processing standard module hook 'hook-sqlite3.py' from 'C:\\Workspace\\Python\\ArcaneAudio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+65278 INFO: Processing standard module hook 'hook-PIL.py' from 'C:\\Workspace\\Python\\ArcaneAudio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+65387 INFO: Processing standard module hook 'hook-PIL.Image.py' from 'C:\\Workspace\\Python\\ArcaneAudio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+65933 INFO: Processing standard module hook 'hook-PIL.ImageFilter.py' from 'C:\\Workspace\\Python\\ArcaneAudio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+66403 INFO: Processing standard module hook 'hook-PySide6.QtMultimedia.py' from 'C:\\Workspace\\Python\\ArcaneAudio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+69292 INFO: Analyzing hidden import 'arcaneaudio.last_working'
+69373 INFO: Processing module hooks (post-graph stage)...
+70268 INFO: Processing standard module hook 'hook-PIL.SpiderImagePlugin.py' from 'C:\\Workspace\\Python\\ArcaneAudio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+70402 INFO: Processing standard module hook 'hook-PySide6.QtMultimediaWidgets.py' from 'C:\\Workspace\\Python\\ArcaneAudio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+72595 INFO: Processing standard module hook 'hook-PySide6.QtOpenGL.py' from 'C:\\Workspace\\Python\\ArcaneAudio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+75514 INFO: Performing binary vs. data reclassification (245 entries)
+77073 INFO: Looking for ctypes DLLs
+77206 INFO: Analyzing run-time hooks ...
+77216 INFO: Including run-time hook 'pyi_rth_pyqtgraph_multiprocess.py' from 'C:\\Workspace\\Python\\ArcaneAudio\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\rthooks'
+77216 INFO: Including run-time hook 'pyi_rth_inspect.py' from 'C:\\Workspace\\Python\\ArcaneAudio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks'
+77216 INFO: Including run-time hook 'pyi_rth_pkgutil.py' from 'C:\\Workspace\\Python\\ArcaneAudio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks'
+77216 INFO: Including run-time hook 'pyi_rth_multiprocessing.py' from 'C:\\Workspace\\Python\\ArcaneAudio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks'
+77226 INFO: Including run-time hook 'pyi_rth_pyside6.py' from 'C:\\Workspace\\Python\\ArcaneAudio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks'
+77227 INFO: Processing pre-find-module-path hook 'hook-_pyi_rth_utils.py' from 'C:\\Workspace\\Python\\ArcaneAudio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_find_module_path'
+77227 INFO: Processing standard module hook 'hook-_pyi_rth_utils.py' from 'C:\\Workspace\\Python\\ArcaneAudio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+77247 INFO: Creating base_library.zip...
+77267 INFO: Looking for dynamic libraries
+78499 INFO: Extra DLL search directories (AddDllDirectory): ['C:\\Workspace\\Python\\ArcaneAudio\\.venv\\Lib\\site-packages\\shiboken6', 'C:\\Workspace\\Python\\ArcaneAudio\\.venv\\Lib\\site-packages\\numpy.libs']
+78499 INFO: Extra DLL search directories (PATH): ['C:\\Workspace\\Python\\ArcaneAudio\\.venv\\Lib\\site-packages\\PySide6']
+80298 INFO: Warnings written to C:\Workspace\Python\ArcaneAudio\build\arcaneaudio\warn-arcaneaudio.txt
+80440 INFO: Graph cross-reference written to C:\Workspace\Python\ArcaneAudio\build\arcaneaudio\xref-arcaneaudio.html
+80490 INFO: checking PYZ
+80490 INFO: Building PYZ because PYZ-00.toc is non existent
+80490 INFO: Building PYZ (ZlibArchive) C:\Workspace\Python\ArcaneAudio\build\arcaneaudio\PYZ-00.pyz
+81549 INFO: Building PYZ (ZlibArchive) C:\Workspace\Python\ArcaneAudio\build\arcaneaudio\PYZ-00.pyz completed successfully.
+81580 INFO: checking PKG
+81580 INFO: Building PKG because PKG-00.toc is non existent
+81589 INFO: Building PKG (CArchive) ArcaneAudio.pkg
+81610 INFO: Building PKG (CArchive) ArcaneAudio.pkg completed successfully.
+81610 INFO: Bootloader C:\Workspace\Python\ArcaneAudio\.venv\Lib\site-packages\PyInstaller\bootloader\Windows-64bit-intel\runw.exe
+81610 INFO: checking EXE
+81610 INFO: Building EXE because EXE-00.toc is non existent
+81610 INFO: Building EXE from EXE-00.toc
+81610 INFO: Copying bootloader EXE to C:\Workspace\Python\ArcaneAudio\build\arcaneaudio\ArcaneAudio.exe
+81681 INFO: Copying icon to EXE
+81717 INFO: Copying 0 resources to EXE
+81717 INFO: Embedding manifest in EXE
+81751 INFO: Appending PKG archive to EXE
+81801 INFO: Fixing EXE headers
+82102 INFO: Building EXE from EXE-00.toc completed successfully.
+82102 INFO: checking Tree
+82102 INFO: Building Tree because Tree-00.toc is non existent
+82102 INFO: Building Tree Tree-00.toc
+82102 INFO: checking COLLECT
+82102 INFO: Building COLLECT because COLLECT-00.toc is non existent
+82102 INFO: Building COLLECT COLLECT-00.toc
+82834 INFO: Building COLLECT COLLECT-00.toc completed successfully.
+82849 INFO: Build complete! The results are available in: C:\Workspace\Python\ArcaneAudio\dist
+Adding imports: ['yt_dlp.compat._legacy', 'yt_dlp.compat._deprecated', 'yt_dlp.utils._legacy', 'yt_dlp.utils._deprecated', 'Cryptodome', 'mutagen', 'brotli', 'certifi', 'secretstorage', 'curl_cffi']

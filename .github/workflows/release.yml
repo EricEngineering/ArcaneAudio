@@ -1,0 +1,381 @@
+name: Release
+
+# Builds the Windows installer + Linux tarball + macOS .dmg and publishes them as
+# assets on a GitHub Release. See CLAUDE.md → "Release automation (GitHub Actions)".
+# Mirrors ArcaneAtlas. ffmpeg (for the yt-dlp YouTube→MP3 feature) is bundled on
+# WINDOWS ONLY for now — see the ffmpeg TODO in CLAUDE.md.
+#
+# Trigger EITHER by:
+#   1. pushing a version tag:   git tag v0.8.0 && git push origin v0.8.0
+#   2. Actions tab → Release → Run workflow (enter version, e.g. 0.8.0)
+#
+# Re-running for the same version is safe: the release job overwrites same-named
+# assets on the existing release (idempotent).
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (no leading v), e.g. 0.8.0'
+        required: true
+
+# App-specific values — the ONLY block that changes between the 3 apps.
+env:
+  APP_NAME:     ArcaneAudio
+  WIN_ASSET:    ArcaneAudio-Setup-windows.exe
+  LINUX_ASSET:  ArcaneAudio-linux.tar.gz
+  MAC_ASSET:    ArcaneAudio-macos.dmg
+  # Static ffmpeg builds bundled per-OS for the yt-dlp YouTube→MP3 feature (need libmp3lame).
+  # Windows: BtbN (GitHub-hosted, reliable; GPL build is fine — the app is AGPLv3).
+  FFMPEG_WIN:   https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip
+  FFMPEG_LINUX: https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz
+  # macOS fetches BOTH arm64 + amd64 martin-riedl builds inline and lipo's them into a fat (universal2) ffmpeg.
+
+jobs:
+  # ───────────────────────────── Windows installer ─────────────────────────────
+  build-windows:
+    runs-on: windows-latest
+    env:
+      AZURE_TENANT_ID:          ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_CLIENT_ID:          ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_CLIENT_SECRET:      ${{ secrets.AZURE_CLIENT_SECRET }}
+      TRUSTED_SIGNING_ENDPOINT: ${{ secrets.TRUSTED_SIGNING_ENDPOINT }}
+      TRUSTED_SIGNING_ACCOUNT:  ${{ secrets.TRUSTED_SIGNING_ACCOUNT }}
+      TRUSTED_SIGNING_PROFILE:  ${{ secrets.TRUSTED_SIGNING_PROFILE }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Python deps
+        run: python -m pip install --upgrade pip -r requirements.txt
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y --no-progress
+
+      - name: Fetch ffmpeg (Windows-bundled, into third_party/ffmpeg)
+        shell: pwsh
+        run: |
+          Invoke-WebRequest "$env:FFMPEG_WIN" -OutFile ffmpeg.zip
+          Expand-Archive -Force ffmpeg.zip -DestinationPath ffmpeg_dl
+          New-Item -ItemType Directory -Force -Path third_party/ffmpeg | Out-Null
+          Copy-Item (Get-ChildItem -Recurse ffmpeg_dl -Filter ffmpeg.exe | Select-Object -First 1).FullName third_party/ffmpeg/
+
+      - name: Build app with PyInstaller
+        shell: cmd
+        run: pyinstaller --noconfirm arcaneaudio.spec
+
+      - name: Azure CLI login for signing (skipped if unsigned)
+        if: env.AZURE_CLIENT_ID != ''
+        shell: pwsh
+        run: |
+          az login --service-principal `
+            --username $env:AZURE_CLIENT_ID `
+            --password $env:AZURE_CLIENT_SECRET `
+            --tenant $env:AZURE_TENANT_ID `
+            --allow-no-subscriptions
+
+      - name: Sign the app exe (skipped if unsigned)
+        if: env.AZURE_CLIENT_ID != ''
+        uses: azure/trusted-signing-action@v0
+        with:
+          endpoint: ${{ env.TRUSTED_SIGNING_ENDPOINT }}
+          trusted-signing-account-name: ${{ env.TRUSTED_SIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ env.TRUSTED_SIGNING_PROFILE }}
+          # Only ArcaneAudio.exe (top-level); bundled ffmpeg.exe lives in _internal\
+          # and doesn't need signing (child process, not Gatekeeper-gated on Windows).
+          files-folder: ${{ github.workspace }}\dist\ArcaneAudio
+          files-folder-filter: exe
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+
+      # Audio's .iss compiles from installer\ (SourcePath == installer\), so copy it
+      # there first — its icon/license/Source paths are relative to that folder.
+      - name: Build installer with Inno Setup
+        shell: cmd
+        run: |
+          if not exist installer mkdir installer
+          copy /Y arcaneaudio.iss installer\arcaneaudio.iss
+          set "VERSION="
+          for /f "tokens=2 delims== " %%v in ('findstr /b /c:"__version__" "arcaneaudio\__init__.py"') do set "VERSION=%%~v"
+          if not defined VERSION ( echo Could not read __version__ & exit /b 1 )
+          "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DMyAppVersion=%VERSION% installer\arcaneaudio.iss
+
+      - name: Sign the installer (skipped if unsigned)
+        if: env.AZURE_CLIENT_ID != ''
+        uses: azure/trusted-signing-action@v0
+        with:
+          endpoint: ${{ env.TRUSTED_SIGNING_ENDPOINT }}
+          trusted-signing-account-name: ${{ env.TRUSTED_SIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ env.TRUSTED_SIGNING_PROFILE }}
+          files-folder: ${{ github.workspace }}\installer\output
+          files-folder-filter: exe
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+
+      - name: Collect installer under the contract name
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem installer/output/*.exe | Select-Object -First 1
+          if (-not $exe) { Write-Error "No installer produced in installer/output"; exit 1 }
+          Copy-Item $exe.FullName "$env:WIN_ASSET"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: ${{ env.WIN_ASSET }}
+          if-no-files-found: error
+
+  # ───────────────────────────── Linux tarball ─────────────────────────────────
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Python deps
+        run: python -m pip install --upgrade pip -r requirements.txt
+
+      - name: Install Qt/xcb system libs (PySide6 imports these during the build)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libegl1 libgl1 libxkbcommon0 libglib2.0-0 \
+            libxcb-cursor0 libxcb-xinerama0 libxcb-icccm4 libxcb-image0 \
+            libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-shape0
+
+      - name: Fetch ffmpeg (static → third_party/ffmpeg)
+        run: |
+          mkdir -p third_party/ffmpeg
+          curl -L "$FFMPEG_LINUX" -o ffmpeg.tar.xz
+          mkdir -p ffmpeg_dl && tar xf ffmpeg.tar.xz -C ffmpeg_dl --strip-components=1
+          cp ffmpeg_dl/ffmpeg third_party/ffmpeg/ffmpeg
+          chmod +x third_party/ffmpeg/ffmpeg
+          third_party/ffmpeg/ffmpeg -hide_banner -version | grep -q -- '--enable-libmp3lame' \
+            || { echo "::error::bundled ffmpeg lacks libmp3lame"; exit 1; }
+
+      - name: Build with PyInstaller
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: pyinstaller --noconfirm arcaneaudio.spec
+
+      - name: Package tarball under the contract name
+        run: |
+          test -x "dist/${APP_NAME}/${APP_NAME}" || { echo "Build output missing"; exit 1; }
+          tar -czf "$LINUX_ASSET" -C dist "$APP_NAME"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-tarball
+          path: ${{ env.LINUX_ASSET }}
+          if-no-files-found: error
+
+  # ───────────────────────────── macOS .dmg ────────────────────────────────────
+  # UNIVERSAL2 (arm64 + x86_64) build on the macos-14 Apple Silicon runner — runs
+  # on both Apple Silicon and Intel Macs, built entirely on the arm64 runner (the
+  # deprecated Intel macos-13 runner is never used).
+  build-macos:
+    runs-on: macos-14
+    env:
+      MACOS_CERT_P12:         ${{ secrets.MACOS_CERT_P12 }}
+      MACOS_CERT_PASSWORD:    ${{ secrets.MACOS_CERT_PASSWORD }}
+      MACOS_SIGN_IDENTITY:    ${{ secrets.MACOS_SIGN_IDENTITY }}
+      MACOS_TEAM_ID:          ${{ secrets.MACOS_TEAM_ID }}
+      MACOS_NOTARY_KEY_ID:    ${{ secrets.MACOS_NOTARY_KEY_ID }}
+      MACOS_NOTARY_ISSUER_ID: ${{ secrets.MACOS_NOTARY_ISSUER_ID }}
+      MACOS_NOTARY_KEY_P8:    ${{ secrets.MACOS_NOTARY_KEY_P8 }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # Universal2 needs a universal2 Python (python.org, not setup-python which is
+      # arch-specific) + universal2 wheels (PySide6 ships them) + a fat ffmpeg.
+      # Built on the arm64 runner; target_arch='universal2' cross-produces x86_64.
+      - name: Install universal2 Python
+        run: |
+          PY=3.12.8
+          curl -fL "https://www.python.org/ftp/python/${PY}/python-${PY}-macos11.pkg" -o python.pkg
+          sudo installer -pkg python.pkg -target /
+          echo "/Library/Frameworks/Python.framework/Versions/3.12/bin" >> "$GITHUB_PATH"
+          lipo -archs "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3.12"
+
+      # Universal2 requires EVERY bundled binary to be fat. PySide6 ships
+      # universal2 wheels and most deps are pure-Python, but numpy and Pillow
+      # ship separate arm64 / x86_64 wheels — so download both arches and fuse
+      # each arch-specific wheel with its twin into a universal2 wheel
+      # (delocate-merge) before installing. (numpy's wheels are macOS-14-min, so
+      # the resulting app requires macOS 14+.)
+      - name: Install Python deps (fuse arch-specific wheels → universal2)
+        run: |
+          set -euo pipefail
+          python3.12 -m pip install --upgrade pip "delocate>=0.11"
+          # Runtime deps only — pyinstaller is a host build tool, not bundled.
+          grep -viE '^\s*pyinstaller' requirements.txt > runtime-reqs.txt
+          rm -rf wheels && mkdir -p wheels/arm64 wheels/x86_64 wheels/final
+          dl() {
+            python3.12 -m pip download -r runtime-reqs.txt --only-binary=:all: \
+              --implementation cp --python-version 3.12 --abi cp312 \
+              --platform "$1" -d "$2"
+          }
+          dl macosx_14_0_arm64  wheels/arm64
+          dl macosx_14_0_x86_64 wheels/x86_64
+          shopt -s nullglob
+          for whl in wheels/arm64/*.whl; do
+            base="$(basename "$whl")"
+            case "$base" in
+              *universal2*|*-none-any.whl)
+                cp "$whl" wheels/final/ ;;              # already fat / pure-python
+              *arm64*)
+                prefix="${base%-macosx_*_arm64.whl}"
+                twins=( wheels/x86_64/${prefix}-macosx_*_x86_64.whl )
+                if [ ${#twins[@]} -eq 0 ]; then
+                  echo "::error::no x86_64 twin for $base"; exit 1
+                fi
+                echo "fuse: $base  +  $(basename "${twins[0]}")"
+                delocate-merge "$whl" "${twins[0]}" -w wheels/final/ ;;
+              *)
+                cp "$whl" wheels/final/ ;;
+            esac
+          done
+          python3.12 -m pip install wheels/final/*.whl
+          python3.12 -m pip install pyinstaller
+          # sanity: the two fused native deps must now carry both slices
+          np_so="$(find "$(python3.12 -c 'import numpy,os;print(os.path.dirname(numpy.__file__))')" -name '*.so' | head -1)"
+          pil_so="$(find "$(python3.12 -c 'import PIL,os;print(os.path.dirname(PIL.__file__))')" -name '*.so' | head -1)"
+          echo "numpy .so archs:"; lipo -archs "$np_so"
+          echo "PIL .so archs:";   lipo -archs "$pil_so"
+          for so in "$np_so" "$pil_so"; do
+            lipo -archs "$so" | grep -q 'x86_64' && lipo -archs "$so" | grep -q 'arm64' \
+              || { echo "::error::$so is not universal2 after fuse"; exit 1; }
+          done
+
+      - name: Fetch ffmpeg (universal2 fat → third_party/ffmpeg)
+        run: |
+          mkdir -p third_party/ffmpeg
+          base="https://ffmpeg.martin-riedl.de/redirect/latest/macos"
+          curl -fL "$base/arm64/release/ffmpeg.zip" -o ffmpeg-arm64.zip
+          curl -fL "$base/amd64/release/ffmpeg.zip" -o ffmpeg-amd64.zip
+          rm -rf a64 x64 && unzip -o ffmpeg-arm64.zip -d a64 && unzip -o ffmpeg-amd64.zip -d x64
+          lipo -create a64/ffmpeg x64/ffmpeg -output third_party/ffmpeg/ffmpeg
+          chmod +x third_party/ffmpeg/ffmpeg
+          echo "ffmpeg archs:"; lipo -archs third_party/ffmpeg/ffmpeg
+          third_party/ffmpeg/ffmpeg -hide_banner -version | grep -q -- '--enable-libmp3lame' \
+            || { echo "::error::bundled ffmpeg lacks libmp3lame"; exit 1; }
+
+      - name: Import signing certificate (skipped if unsigned)
+        if: env.MACOS_CERT_P12 != ''
+        run: |
+          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          KEYCHAIN_PWD="$(openssl rand -base64 24)"
+          security create-keychain -p "$KEYCHAIN_PWD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PWD" "$KEYCHAIN"
+          echo "$MACOS_CERT_P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN" \
+            -P "$MACOS_CERT_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: \
+            -s -k "$KEYCHAIN_PWD" "$KEYCHAIN" >/dev/null
+          security list-keychains -d user -s "$KEYCHAIN" \
+            $(security list-keychains -d user | sed s/\"//g)
+          security default-keychain -s "$KEYCHAIN"
+          rm -f "$RUNNER_TEMP/cert.p12"
+
+      - name: Build with PyInstaller (universal2; signs during build when identity is set)
+        run: python3.12 -m PyInstaller --noconfirm arcaneaudio.spec
+
+      - name: Re-sign bundled ffmpeg for notarization (skipped if unsigned)
+        if: env.MACOS_CERT_P12 != ''
+        run: |
+          # PyInstaller signs the a.binaries ffmpeg, but re-sign each nested ffmpeg
+          # Mach-O with a hardened runtime to be certain notarization accepts it,
+          # then re-seal the .app so its signature covers them.
+          find "dist/${APP_NAME}.app" -type f -name ffmpeg -print0 |
+            while IFS= read -r -d '' f; do
+              codesign --force --options runtime --timestamp \
+                --sign "$MACOS_SIGN_IDENTITY" "$f"
+            done
+          codesign --force --options runtime --timestamp \
+            --entitlements packaging/entitlements.mac.plist \
+            --sign "$MACOS_SIGN_IDENTITY" "dist/${APP_NAME}.app"
+
+      - name: Package .dmg under the contract name
+        run: |
+          test -d "dist/${APP_NAME}.app" || { echo "No .app bundle produced"; exit 1; }
+          mkdir -p dmg_stage
+          cp -R "dist/${APP_NAME}.app" dmg_stage/
+          ln -s /Applications dmg_stage/Applications
+          hdiutil create -volname "${APP_NAME}" -srcfolder dmg_stage \
+            -ov -format UDZO "${MAC_ASSET}"
+
+      - name: Sign, notarize & staple the .dmg (skipped if unsigned)
+        if: env.MACOS_CERT_P12 != ''
+        run: |
+          codesign --force --timestamp --sign "$MACOS_SIGN_IDENTITY" "$MAC_ASSET"
+          echo "$MACOS_NOTARY_KEY_P8" | base64 --decode > "$RUNNER_TEMP/notary.p8"
+          if ! grep -q "BEGIN PRIVATE KEY" "$RUNNER_TEMP/notary.p8"; then
+            echo "::error::MACOS_NOTARY_KEY_P8 did not decode to a PEM private key (run: base64 -w0 AuthKey_XXXX.p8)."
+            exit 1
+          fi
+          xcrun notarytool submit "$MAC_ASSET" \
+            --key "$RUNNER_TEMP/notary.p8" \
+            --key-id "$MACOS_NOTARY_KEY_ID" \
+            --issuer "$MACOS_NOTARY_ISSUER_ID" \
+            --wait --timeout 2h
+          rm -f "$RUNNER_TEMP/notary.p8"
+          xcrun stapler staple "$MAC_ASSET"
+
+      - name: Verify Gatekeeper would accept the app (skipped if unsigned)
+        if: env.MACOS_CERT_P12 != ''
+        run: |
+          codesign --verify --deep --strict --verbose=2 "dist/${APP_NAME}.app"
+          spctl --assess --type exec --verbose=4 "dist/${APP_NAME}.app"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-dmg
+          path: ${{ env.MAC_ASSET }}
+          if-no-files-found: error
+
+  # ───────────────────────────── Publish the release ───────────────────────────
+  release:
+    needs: [build-windows, build-linux, build-macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Resolve release tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=v${{ github.event.inputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish / update GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: ${{ env.APP_NAME }} ${{ steps.tag.outputs.tag }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
+            artifacts/**/*.exe
+            artifacts/**/*.tar.gz
+            artifacts/**/*.dmg
