@@ -146,7 +146,6 @@ def res_path(name: str) -> str:
 
 
 ICON_PATH        = res_path("icon.png")
-GEAR_ICON_PATH   = res_path("gear_icon.png")
 SOUNDBARD_PATH   = res_path("soundbard.png")
 DUEL_PATH        = res_path("duel.png")
 FOLDER_ICON_PATH = res_path("folder.png")
