@@ -29,9 +29,11 @@ env:
   LINUX_ASSET:  ArcaneAudio-linux.tar.gz
   MAC_ASSET:    ArcaneAudio-macos.dmg
   # Static ffmpeg builds bundled per-OS for the yt-dlp YouTube→MP3 feature (need libmp3lame).
-  # Windows: BtbN (GitHub-hosted, reliable; GPL build is fine — the app is AGPLv3).
+  # Windows + Linux: BtbN (GitHub-hosted, reliable; GPL build is fine — the app is AGPLv3).
+  # (Linux was johnvansickle.com but that single-maintainer host intermittently served
+  #  truncated/HTML responses to CI runners, breaking the tar extract — see git history.)
   FFMPEG_WIN:   https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip
-  FFMPEG_LINUX: https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz
+  FFMPEG_LINUX: https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.tar.xz
   # macOS fetches BOTH arm64 + amd64 martin-riedl builds inline and lipo's them into a fat (universal2) ffmpeg.
 
 jobs:
@@ -157,9 +159,9 @@ jobs:
       - name: Fetch ffmpeg (static → third_party/ffmpeg)
         run: |
           mkdir -p third_party/ffmpeg
-          curl -L "$FFMPEG_LINUX" -o ffmpeg.tar.xz
+          curl -fL --retry 3 --retry-all-errors "$FFMPEG_LINUX" -o ffmpeg.tar.xz
           mkdir -p ffmpeg_dl && tar xf ffmpeg.tar.xz -C ffmpeg_dl --strip-components=1
-          cp ffmpeg_dl/ffmpeg third_party/ffmpeg/ffmpeg
+          cp ffmpeg_dl/bin/ffmpeg third_party/ffmpeg/ffmpeg
           chmod +x third_party/ffmpeg/ffmpeg
           third_party/ffmpeg/ffmpeg -hide_banner -version | grep -q -- '--enable-libmp3lame' \
             || { echo "::error::bundled ffmpeg lacks libmp3lame"; exit 1; }

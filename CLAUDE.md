@@ -2,6 +2,9 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Working agreement
+- **Never `git commit` or `git push`.** Make changes in the working tree only and leave all committing/pushing to the user, even after a task is complete and verified — do not commit unless the user explicitly asks in that moment.
+
 ## What this is
 
 ArcaneAudio — **"Arcane Audio – Cast Your Playlist"** — is a PySide6 (Qt for Python) desktop **MP3 player / music-library manager** with an arcana/magic theme, aimed at tabletop-RPG Game Masters (ambient tracks, a second simultaneous "duel" track, a soundboard, a live audio visualizer). The window title is set in `MP3Player.__init__` ([main.py:198](arcaneaudio/main.py#L198)). It is a **sibling project to ArcaneAtlas** (the battle-map app) — same author, same PySide6 + PyInstaller + Inno Setup stack, same `Documents/<App>/` data convention.
