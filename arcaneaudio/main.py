@@ -53,8 +53,8 @@ from PySide6.QtMultimedia import (
 from PySide6.QtWidgets import (
     QAbstractItemView, QApplication, QDialog, QFileDialog, QHBoxLayout,
     QLabel, QLineEdit, QListWidget, QListWidgetItem, QMainWindow,
-    QMenu, QMessageBox, QPushButton, QProgressBar, QSlider, QSpacerItem,
-    QSplitter, QStyle, QSizePolicy, QTextBrowser, QTextEdit, QToolButton,
+    QMenu, QMessageBox, QPushButton, QProgressBar, QSpacerItem,
+    QSplitter, QStyle, QProxyStyle, QStyleFactory, QSizePolicy, QTextBrowser, QTextEdit, QToolButton,
     QTreeWidget, QTreeWidgetItem, QVBoxLayout, QWidget, QInputDialog
 )
 
@@ -154,6 +154,26 @@ FOLDER_NO_ICON_PATH = res_path("folder-no.png")
 PLAYLIST_ICON_PATH = res_path("playlist.png")
 PLAYLIST_YES_ICON_PATH = res_path("playlist-yes.png")
 PLAYLIST_NO_ICON_PATH = res_path("playlist-no.png")
+
+
+class JumpSliderStyle(QProxyStyle):
+    """Makes a left-click anywhere on a slider's groove jump the handle to that
+    point (instead of paging toward it), then drag normally. Uses Qt's built-in
+    absolute-set style hint so positioning stays handle-aware and correct at the
+    ends/any orientation — no geometry math. Apply with slider.setStyle(...).
+
+    This replaces the older ClickSliderWidget subclass (which overrode
+    mousePressEvent and computed the value from raw x over the full width,
+    ignoring the handle width — so clicks near the ends were slightly off).
+    Base it on a *fresh* Fusion style: a QProxyStyle with a NULL base wraps the
+    platform's *native desktop* style (macOS "macintosh"/Aqua), so the sliders
+    would render native — oversized and ignoring the palette Highlight — on Mac.
+    A Fusion base fixes that on all platforms while still honouring the current
+    theme's palette (the fill color follows QPalette.Highlight)."""
+    def styleHint(self, hint, opt=None, widget=None, returnData=None):
+        if hint == QStyle.StyleHint.SH_Slider_AbsoluteSetButtons:
+            return int(Qt.MouseButton.LeftButton.value)
+        return super().styleHint(hint, opt, widget, returnData)
 
 
 class MP3Player(QWidget):
@@ -384,8 +404,7 @@ class MP3Player(QWidget):
         self.ui.btn_duel_play.clicked.connect(self.duel_play)
         self.ui.btn_duel_pause.clicked.connect(self.duel_pause)
 
-        # Upgrade the main progress slider clickslider class and connect
-        self.ui.progress_slider = self.promote_widget_to_newclass(self.ui.progress_slider, ClickSliderWidget)
+        # Main progress slider — click-to-jump via JumpSliderStyle (applied below)
         self.ui.progress_slider.setRange(0, 100)
         self.ui.progress_slider.sliderMoved.connect(self.seek)
         self.ui.progress_slider.sliderPressed.connect(self.slider_pressed)
@@ -393,8 +412,7 @@ class MP3Player(QWidget):
         self.ui.progress_slider.sliderReleased.connect(self.slider_released)
         self.slider_being_moved = False
 
-        # Upgrade the duel progress slider to clickslider class and connect
-        self.ui.duel_progress_slider = self.promote_widget_to_newclass(self.ui.duel_progress_slider, ClickSliderWidget)
+        # Duel progress slider — click-to-jump via JumpSliderStyle (applied below)
         self.ui.duel_progress_slider.setRange(0, 100)
         self.ui.duel_progress_slider.sliderMoved.connect(self.duel_seek)
         self.ui.duel_progress_slider.sliderPressed.connect(self.duel_slider_pressed)
@@ -402,19 +420,31 @@ class MP3Player(QWidget):
         self.ui.duel_progress_slider.sliderReleased.connect(self.duel_slider_released)
         self.duel_slider_being_moved = False
 
-        # Upgrade the volume slider to clickslider class and connect
-        self.ui.volume_slider = self.promote_widget_to_newclass(self.ui.volume_slider, ClickSliderWidget)
+        # Volume slider — click-to-jump via JumpSliderStyle (applied below)
         self.ui.volume_slider.setRange(0, 100)
         self.ui.volume_slider.setValue(100)
         self.ui.volume_slider.sliderReleased.connect(self.set_volume)
         self.ui.volume_slider.sliderMoved.connect(self.set_volume)
 
-        # Upgrade the duel volume slider to clickslider class and connect
-        self.ui.duel_volume_slider = self.promote_widget_to_newclass(self.ui.duel_volume_slider, ClickSliderWidget)
+        # Duel volume slider — click-to-jump via JumpSliderStyle (applied below)
         self.ui.duel_volume_slider.setRange(0, 100)
         self.ui.duel_volume_slider.setValue(100)
         self.ui.duel_volume_slider.sliderReleased.connect(self.duel_set_volume)
         self.ui.duel_volume_slider.sliderMoved.connect(self.duel_set_volume)
+
+        # Make all four sliders click-to-jump (left-click the track moves the handle
+        # to that point, then drags) via one shared proxy style, kept on self so it
+        # isn't garbage-collected while the sliders reference it. Base it on a *fresh*
+        # Fusion style — NOT a null base, which would wrap the platform's native style
+        # (macOS Aqua: oversized sliders that ignore the theme's Highlight color). The
+        # fill still follows the active theme's QPalette.Highlight (set in set_theme).
+        # QProxyStyle *takes ownership* of the base, so this must be a fresh instance we
+        # don't otherwise hold — do NOT pass the shared app style (self.style()), which
+        # QApplication also owns → double-free at teardown → segfault.
+        self._jump_slider_style = JumpSliderStyle(QStyleFactory.create("Fusion"))
+        for _s in (self.ui.progress_slider, self.ui.duel_progress_slider,
+                   self.ui.volume_slider, self.ui.duel_volume_slider):
+            _s.setStyle(self._jump_slider_style)
 
         self.ui.visualizationWidget.setBackground(None)
         self.ui.visualizationWidget.enableAutoRange(axis='y')
@@ -478,23 +508,6 @@ class MP3Player(QWidget):
 
         self.init_visualization()
         self.load_settings()
-
-    def promote_widget_to_newclass(self, objecttopromote, newclass):
-        layout = objecttopromote.parent().layout()
-        # grab old settings
-        style = objecttopromote.styleSheet()
-        orientation = objecttopromote.orientation()
-        minwidth = objecttopromote.minimumWidth()
-        maxwidth = objecttopromote.maximumWidth()
-        # create new object
-        newobject = newclass(self)
-        newobject.setStyleSheet(style)
-        newobject.setOrientation(orientation)
-        newobject.setMinimumWidth(minwidth)
-        newobject.setMaximumWidth(maxwidth)
-        layout.replaceWidget(objecttopromote, newobject)
-        objecttopromote.deleteLater()
-        return newobject
 
     def add_decurse_text(self, text):
         # Move the cursor to the end before inserting text
@@ -2210,17 +2223,6 @@ class FolderTreeWidget(QTreeWidget):
         if platform.system() == "Windows":
             return os.path.normcase(os.path.abspath(path1)) == os.path.normcase(os.path.abspath(path2))
         return os.path.abspath(path1) == os.path.abspath(path2)
-
-class ClickSliderWidget(QSlider):
-    def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton:
-            value = QStyle.sliderValueFromPosition(
-                self.minimum(), self.maximum(),
-                event.position().x(), self.width()
-            )
-            self.setValue(value)
-            self.sliderMoved.emit(value)
-        super().mousePressEvent(event)
 
 class YTDLPLogger:
     def __init__(self, player=None, thread=None):
