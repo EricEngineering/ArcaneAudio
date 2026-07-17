@@ -252,9 +252,12 @@ class MP3Player(QWidget):
         self.ui.settingsButton.setToolButtonStyle(Qt.ToolButtonTextOnly)
         self.ui.settingsButton.setText("⚙ Settings")
         self.ui.settingsButton.setAutoRaise(False)  # bordered, like the other buttons
-        # Match the transport buttons' height, and keep the width just wide enough
-        # for the glyph + label (the row's spacer absorbs the leftover space).
-        self.ui.settingsButton.setFixedHeight(self.ui.btn_play.sizeHint().height())
+        # NOTE: the height is matched to the transport buttons in set_theme(), NOT
+        # here — QPushButton.sizeHint() is style-dependent and the Fusion theme isn't
+        # applied yet at this point (sampling now would capture the native macOS Aqua
+        # height and leave the button mismatched after the theme switches to Fusion).
+        # The width stays just wide enough for the glyph + label (the row's spacer
+        # absorbs the leftover space).
         self.ui.settingsButton.setStyleSheet("QToolButton { padding: 0px 6px; }")
 
         # Create the settings menu
@@ -620,6 +623,16 @@ class MP3Player(QWidget):
         # Update the visualization background explicitly
         bg_color = QApplication.palette().color(QPalette.Window)
         self.ui.visualizationWidget.setBackground(bg_color)
+
+        # Match the settings button's height to the transport buttons under the
+        # *current* style. QPushButton.sizeHint() is style-dependent, so this must
+        # run AFTER the style above is applied — doing it in __init__ (before the
+        # theme) sampled the startup style, which on macOS is native Aqua (a taller
+        # push button than Fusion), leaving the settings button mismatched. Running
+        # it here also re-syncs on every runtime theme switch. Guarded because
+        # set_theme can fire before the settings button exists during early setup.
+        if hasattr(self.ui, "settingsButton") and hasattr(self.ui, "btn_play"):
+            self.ui.settingsButton.setFixedHeight(self.ui.btn_play.sizeHint().height())
 
         self.save_theme_to_settings(theme_name)
         self.update_theme_menu_checkmarks(theme_name)
